@@ -42,7 +42,7 @@ HEADER = [
 
 BOX_W = 62
 
-def _bar(fill='─', left='├', right='┤'):
+def _bar(fill='─', left='╠', right='╣'):
     return f"{left}{fill * (BOX_W - 2)}{right}"
 
 def _row(label, value, pct=None):
@@ -52,49 +52,50 @@ def _row(label, value, pct=None):
         right_part = f"{value:>12,}"
     left_part = f"  {label}"
     gap = BOX_W - 2 - len(left_part) - len(right_part)
-    return f"│{left_part}{' ' * max(gap, 1)}{right_part}│"
+    return f"║{left_part}{' ' * max(gap, 1)}{right_part}║"
 
 def _section(title):
     padded = f"  {title}  "
     side = (BOX_W - 2 - len(padded)) // 2
-    return f"│{'─' * side}{padded}{'─' * (BOX_W - 2 - side - len(padded))}│"
+    return f"║{'═' * side}{padded}{'═' * (BOX_W - 2 - side - len(padded))}║"
 
 def print_quality_report(total, valid, invalid_date, missing_crit,
                           color_corr, state_corr):
     pct = lambda n: (n / total * 100) if total else 0.0
 
     lines = [
-        f"┌{'─' * (BOX_W - 2)}┐",
-        f"│{'  TASK 1.1 — DATA QUALITY REPORT':^{BOX_W - 2}}│",
-        f"│{'  NYC Parking Violations  ·  2024 – 2025':^{BOX_W - 2}}│",
-        _bar('─', '├', '┤'),
+        f"╔{'═' * (BOX_W - 2)}╗",
+        f"║{'  TASK 1.1 — DATA QUALITY REPORT':^{BOX_W - 2}}║",
+        f"║{'  NYC Parking Violations  ·  2024 – 2025':^{BOX_W - 2}}║",
+        _bar('═', '╠', '╣'),
         _section("INPUT SUMMARY"),
-        _bar('─', '├', '┤'),
+        _bar('═', '╠', '╣'),
         _row("Total raw records read",          total),
         _row("Valid records (output)",           valid,        pct(valid)),
-        _bar('─', '├', '┤'),
+        _bar('═', '╠', '╣'),
         _section("RECORDS DISCARDED"),
-        _bar('─', '├', '┤'),
+        _bar('═', '╠', '╣'),
         _row("Outside 2024-2025 date range",    invalid_date, pct(invalid_date)),
         _row("Missing/invalid critical fields", missing_crit, pct(missing_crit)),
         _row("Total discarded",                 invalid_date + missing_crit,
              pct(invalid_date + missing_crit)),
-        _bar('─', '├', '┤'),
+        _bar('═', '╠', '╣'),
         _section("STANDARDIZATION CORRECTIONS"),
-        _bar('─', '├', '┤'),
+        _bar('═', '╠', '╣'),
         _row("Vehicle color corrections",       color_corr),
         _row("State code corrections",          state_corr),
         _row("Total corrections applied",       color_corr + state_corr),
-        _bar('─', '├', '┤'),
+        _bar('═', '╠', '╣'),
         _section("DATA RETENTION RATE"),
-        _bar('─', '─', '─'),
-        f"│  {'Retention':<30} {'#' * int(pct(valid) / 2):.<29} {pct(valid):5.1f}% │",
-        f"└{'─' * (BOX_W - 2)}┘",
+        _bar('═', '╠', '╣'),
+        f"║  {'Retention':<30} {'█' * int(pct(valid) / 2):.<29} {pct(valid):5.1f}% ║",
+        f"╚{'═' * (BOX_W - 2)}╝",
     ]
 
     sys.stdout.write("\n")
     for l in lines:
-        print(l)
+        # RPT prefix lets run.sh grep these lines reliably
+        print(f"RPT{l}")
     sys.stdout.write("\n")
 
 
@@ -110,36 +111,36 @@ def main():
     color_corr   = 0
     state_corr   = 0
 
-    # STAT lines: only ~6 per mapper — safe to hold in memory.
-    # DATA lines: potentially millions — stream straight to stdout, never buffer.
-    stat_lines = []
+    # META lines: only ~6 per mapper — safe to hold in memory.
+    # REC lines: potentially millions — stream straight to stdout, never buffer.
+    meta_lines = []
 
     out = sys.stdout
 
     # Emit CSV header immediately
     out.write(','.join(HEADER) + '\n')
 
-    # Single pass: stream DATA rows, collect only STAT lines
+    # Single pass: stream REC rows, collect only META lines
     for line in sys.stdin:
         line = line.strip()
-        if not line or '|' not in line:
+        if not line or '::' not in line:
             continue
 
-        record_type, _, data = line.partition('|')
+        record_type, _, data = line.partition('::')
 
-        if record_type == 'DATA':
+        if record_type == 'REC':
             # Write directly — zero memory accumulation
             out.write(data + '\n')
 
-        elif record_type == 'STAT':
+        elif record_type == 'META':
             # Tiny — ~6 lines per mapper
-            stat_lines.append(data)
+            meta_lines.append(data)
 
     out.flush()
 
-    # Aggregate STAT counters (all DATA already written above)
-    for data in stat_lines:
-        stat_key, _, raw_val = data.partition('|')
+    # Aggregate META counters (all REC rows already written above)
+    for data in meta_lines:
+        stat_key, _, raw_val = data.partition('=')
         try:
             val = int(raw_val)
         except ValueError:

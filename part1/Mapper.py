@@ -208,15 +208,15 @@ def main():
         hour = parse_time_to_hour(violation_time)
 
         # ── Emit cleaned row ─────────────────────────────────────────────
-        print(f"DATA|{','.join(fields + [str(hour)])}")
+        print(f"REC::{','.join(fields + [str(hour)])}")
 
     # ── Emit per-mapper statistics ──────────────────────────────────────────
-    print(f"STAT|TOTAL|{total}")
-    print(f"STAT|VALID|{valid}")
-    print(f"STAT|INVALID_DATE|{invalid_date_cnt}")
-    print(f"STAT|MISSING_CRITICAL|{missing_crit_cnt}")
-    print(f"STAT|COLOR_CORRECTION|{color_corr_cnt}")
-    print(f"STAT|STATE_CORRECTION|{state_corr_cnt}")
+    print(f"META::TOTAL={total}")
+    print(f"META::VALID={valid}")
+    print(f"META::INVALID_DATE={invalid_date_cnt}")
+    print(f"META::MISSING_CRITICAL={missing_crit_cnt}")
+    print(f"META::COLOR_CORRECTION={color_corr_cnt}")
+    print(f"META::STATE_CORRECTION={state_corr_cnt}")
 
 
 if __name__ == "__main__":
